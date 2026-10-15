@@ -322,3 +322,14 @@ p { margin: 0 0 1.2em; }
 .has-intro .intro.is-done { opacity: 0; pointer-events: none; }
 .intro__video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
 .has-intro.is-intro-playing { overflow: hidden; }
+
+/* お知らせ帯(管理画面から編集。空のときは要素自体がない) */
+.announce {
+  background: var(--color-amber-dark);
+  color: var(--color-white);
+  text-align: center;
+  padding: 10px 16px;
+  font-size: .9rem;
+  line-height: 1.7;
+}
+.announce p { margin: 0; }
