@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>琥珀 管理画面</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <main id="login" class="login">
+    <h1>琥珀 管理画面</h1>
+    <p>パスワードを入力してください。</p>
+    <form id="login-form">
+      <label>パスワード<input id="pass" type="password" autocomplete="current-password" required></label>
+      <p><button type="submit" class="btn btn--solid">入る</button></p>
+    </form>
+    <p id="login-msg" class="msg" role="alert"></p>
+  </main>
+
+  <div id="editor" class="editor" hidden>
+    <header class="bar">
+      <strong>琥珀 管理画面</strong>
+      <span id="status" class="status" role="status"></span>
+      <button id="publish" class="btn btn--solid" type="button">公開する</button>
+    </header>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="text" aria-selected="true">文章</button>
+      <button role="tab" data-tab="price" aria-selected="false">料金・メニュー</button>
+      <button role="tab" data-tab="photo" aria-selected="false">写真</button>
+      <button role="tab" data-tab="notice" aria-selected="false">お知らせ</button>
+    </nav>
+    <div class="split">
+      <section id="panel" class="panel" aria-live="polite"></section>
+      <iframe id="preview" class="preview" title="プレビュー" sandbox=""></iframe>
+    </div>
+  </div>
+
+  <dialog id="confirm" class="dialog">
+    <h2>公開の確認</h2>
+    <p>次の内容を公開します。</p>
+    <ul id="confirm-list"></ul>
+    <div id="confirm-errors" class="msg" role="alert"></div>
+    <div class="row">
+      <button id="confirm-cancel" class="btn" type="button">やめる</button>
+      <button id="confirm-ok" class="btn btn--solid" type="button">公開する</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
