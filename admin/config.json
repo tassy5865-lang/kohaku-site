@@ -1,0 +1,12 @@
+{
+  "owner": "tassy5865-lang",
+  "repo": "kohaku-site",
+  "branch": "main",
+  "box": {
+    "v": 1,
+    "iter": 600000,
+    "salt": "RKQiEYAWwixS9U3ZY5g1UA==",
+    "iv": "XiwDkDWKtrEd8teG",
+    "ct": "Kr3Rpp8SJqwTzDiu3Dnrc64v2ZNuUc5Nf1RGrIfH7sK88JFzOc/n6YgOsu53Jjbm3kNbXDJN5VHrA1SFkfIbZT01uJo79D0mcHW4UkbHeXnEujpXxMJRCP+ovDTku1o4SP/gcCKGU9eDW8tqLA=="
+  }
+}
