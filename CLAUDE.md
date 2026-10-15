@@ -22,3 +22,11 @@
 - 元の1枚目の写真(施術中・背中が写る)は掲載許可が未確認のため使っていない
 - (解決済み)料金は税込、ペア蒸しは2名分、駐車場は1台のみ。いずれも掲載済み
 - 公開URL: `https://tassy5865-lang.github.io/kohaku-site/`(2026-10-15 に専用リポジトリへ分離。`canonical`・`og:url`・`og:image`・JSON-LD の `url` は設定済み)
+
+## 管理画面(admin/)
+- URL: `https://tassy5865-lang.github.io/kohaku-site/admin/`。店主がパスワードで入り、文章・料金メニュー・写真・お知らせを編集して公開する
+- 編集できる範囲は `index.html` の `<!--edit:KEY-->…<!--/edit:KEY-->` と `data-photo="KEY"`。**この目印を消さない。領域を増やすときは `admin/js/site-model.js` も直す**
+- 保存は GitHub Git Data API で `index.html` と画像を 1 コミット。トークンは `admin/config.json` にパスワードで暗号化して置く(fine-grained PAT、このリポジトリの Contents のみ、有効90日)
+- トークンの作成・更新: 新しいトークンを作り、`KOHAKU_TOKEN` `KOHAKU_PASS`(16文字以上)を環境変数に入れて `node tools/make-config.mjs` → `admin/config.json` をコミット・push
+- 検査ルールは `tools/rules.json`(`check_site.py` と管理画面の公開前検査が共有)。必須語・禁止語を変えるときはここだけ直す
+- テスト: `npm test`(依存パッケージなし、Node 20+)。CI(GitHub Actions)は `workflow` 権限が無く未設置
