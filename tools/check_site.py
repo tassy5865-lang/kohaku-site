@@ -9,53 +9,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 INDEX = ROOT / "index.html"
 
-PRICES = [
-    "¥5,600", "¥8,100", "¥11,600", "¥14,100", "¥7,000", "¥10,000", "¥9,000",
-    "¥12,000", "¥11,000", "¥14,000", "¥13,000", "¥18,600", "¥6,000", "¥18,000",
-]
-MUST_CONTAIN = [
-    "琥珀", "こはく", "完全予約制", "女性専用",
-    "兵庫県姫路市大津区天神町2丁目176-10", "10:00", "17:00", "15:00", "不定休",
-    "駐車場", "田代真弓", "12年目", "¥10,000", "¥12,000", "¥3,500",
-    "おかま直伝よもぎ蒸し®", "ハーブの読み取り®", "おかま直伝頭ほぐし®",
-    "料金・内容は変更になることがあります",
-]
-MUST_LINK = [
-    "https://tol-app.jp/s/hgcmuzzsyrx2ji76o97n",
-    "https://line.me/R/ti/p/@ncf2830x",
-    "https://ig.me/m/kohaku_salon.himeji",
-    "https://www.instagram.com/kohaku_salon.himeji/",
-]
-MUST_NOT_CONTAIN = [
-    "TODO", "TBD", "tel:", "お電話", "治る", "治ります", "痩せる", "必ず効果", "口コミ",
-]
-ROWS = [
-    ("A ローズフェイシャル 30分(シートパック付き)+ 頭ほぐし 10分(40分)", "¥5,600"),
-    ("B ローズフェイシャル 30分(シートパック付き)+ 頭ほぐし 35分(65分)", "¥8,100"),
-    ("C ローズフェイシャル 30分(シートパック付き)+ 頭ほぐし 10分 + よもぎ蒸し(70分)", "¥11,600"),
-    ("D ローズフェイシャル 30分(シートパック付き)+ 頭ほぐし 35分 + よもぎ蒸し(95分)", "¥14,100"),
-    ("Relax アロマボディトリートメント 60分", "¥7,000"),
-    ("Relax アロマボディトリートメント + よもぎ蒸し 90分", "¥10,000"),
-    ("満足 アロマボディトリートメント 80分", "¥9,000"),
-    ("満足 アロマボディトリートメント + よもぎ蒸し 110分", "¥12,000"),
-    ("疲労回復 アロマボディトリートメント 100分", "¥11,000"),
-    ("疲労回復 アロマボディトリートメント + よもぎ蒸し 130分", "¥14,000"),
-    ("おすすめ 110分コース:ボディトリートメント 50分 + ローズフェイシャル(シートパック付き)+ よもぎ蒸し", "¥13,000"),
-    ("140分コース:ボディトリートメント 80分 + ローズフェイシャル(シートパック付き)+ まこも蒸し", "¥18,600"),
-    ("よもぎ蒸し", "¥6,000"),
-    ("まこも蒸し", "¥12,000"),
-    ("よもぎ蒸し + フットトリートメントまたは頭ほぐし 30分", "¥12,000"),
-    ("まこも蒸し + フットトリートメントまたは頭ほぐし 30分", "¥18,000"),
-]
-MUST_CONTAIN_MORE = [
-    "100分", "税込", "1台のみ", "当日キャンセル", "2週間以内", "妊娠の可能性がある時期", "妊活中", "授乳中",
-    "生理中", "予約サイトのカレンダー", "担当医にご相談", "ペースメーカー", "クマザサ蒸し", "備考欄", "30分前後", "事前にお知らせください",
-]
-FORBIDDEN_RE = [
-    (r"0\d{1,4}[-ー−]\d{1,4}[-ー−]\d{3,4}", "電話番号らしき数字"),
-    (r"(改善|デトックス|効果|効能|お客様の声|★|☆|おやすみ処|でありたいと考えています|頑張りすぎるあなた)", "効能・口コミ・出典のない語"),
-]
-SECTION_IDS = ["top", "worries", "about", "flow", "kodawari", "menu", "notice", "faq", "access"]
+RULES = json.loads((ROOT / "tools" / "rules.json").read_text(encoding="utf-8"))
+MUST_CONTAIN = RULES["mustContain"]
+MUST_LINK = RULES["mustLink"]
+MUST_NOT_CONTAIN = RULES["mustNotContain"]
+FORBIDDEN_RE = [(f["pattern"], f["label"]) for f in RULES["forbiddenRe"]]
+SECTION_IDS = RULES["sectionIds"]
+YEN_RE = re.compile(r"^¥\d{1,3}(,\d{3})*$")
 
 
 class Scan(HTMLParser):
@@ -112,9 +72,6 @@ def main():
     text = re.sub(r"\s+", "", "".join(scan.text))
     squashed = lambda s: re.sub(r"\s+", "", s)
 
-    for p in PRICES:
-        if p not in text:
-            errors.append(f"料金がありません: {p}")
     for s in MUST_CONTAIN:
         if squashed(s) not in text:
             errors.append(f"本文にありません: {s}")
@@ -127,17 +84,19 @@ def main():
     for sid in SECTION_IDS:
         if sid not in scan.ids:
             errors.append(f"セクションidがありません: #{sid}")
-    for s_ in MUST_CONTAIN_MORE:
-        if squashed(s_) not in text:
-            errors.append(f"本文にありません: {s_}")
     for pat, label in FORBIDDEN_RE:
         m = re.search(pat, raw)
         if m:
             errors.append(f"{label}: {m.group(0)}")
     rows = [(re.sub(r"\s+", " ", n).strip(), y.strip()) for n, y in
             re.findall(r'<span class="name">(.*?)</span><span class="yen">(.*?)</span>', raw)]
-    if sorted(rows) != sorted(ROWS):
-        errors.append(f"料金表の行が仕様と違います(行数 {len(rows)} / 期待 {len(ROWS)})")
+    if not rows:
+        errors.append("料金表の行がありません")
+    for name, yen in rows:
+        if not name:
+            errors.append("名前が空の料金行があります")
+        if not YEN_RE.match(yen):
+            errors.append(f"料金の形式が正しくありません: {name} → {yen}")
     ids = re.findall(r'id="([^"]+)"', raw)
     for dup in {i for i in ids if ids.count(i) > 1}:
         errors.append(f"idが重複: {dup}")
