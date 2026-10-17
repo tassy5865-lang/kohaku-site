@@ -1,6 +1,6 @@
 import { decryptToken } from './crypto.js';
 import { SiteRepo, PublishError } from './github.js';
-import { readModels, applyModels, summarizeChanges, GROUPS, PHOTOS } from './site-model.js';
+import { readModels, applyModels, summarizeChanges, rebaseModels, GROUPS, PHOTOS } from './site-model.js';
 import { validateDocument } from './validate.js';
 import { blocksToText, textToBlocks } from './blocks.js';
 import { listToText, textToList } from './list.js';
@@ -46,7 +46,9 @@ function strip(m) { // 下書きには、まだ公開していない写真を入
 
 function changed() {
   schedulePreview();
-  safe.set(DRAFT_KEY, JSON.stringify({ headSha: site.headSha, models: strip(models) }));
+  safe.set(DRAFT_KEY, JSON.stringify({
+    headSha: site.headSha, base: strip(original), models: strip(models), photoKeys: Object.keys(pending),
+  }));
   const n = summarizeChanges(original, models).length;
   status(n ? `未公開の変更が ${n} か所あります` : '変更はありません');
 }
@@ -212,17 +214,29 @@ async function publish() {
     const { html, errors } = buildFinal();
     if (errors.length) throw new Error(errors[0]);
     const files = [{ path: 'index.html', content: html }, ...Object.values(pending).map((p) => ({ path: p.path, content: p.bytes }))];
+    // 差し替えで使わなくなった、管理画面が作った画像は同じコミットで消す(手で置いた画像は消さない)
+    for (const k of Object.keys(pending)) {
+      const old = original.photos[k].src;
+      if (/^images\/photo-[\w-]+-[a-z0-9]+\.jpg$/.test(old) && !html.includes(old)) files.push({ path: old, remove: true });
+    }
     const summary = summarizeChanges(original, models).join('、');
     await repo.commit({ headSha: site.headSha, treeSha: site.treeSha, files, message: `管理画面から更新: ${summary}` });
-    $('#confirm').close();
-    safe.del(DRAFT_KEY);
-    for (const k of Object.keys(pending)) delete pending[k];
-    await loadSite();
-    status('公開しました。反映まで 1〜2 分ほどかかります。');
   } catch (e) {
     $('#confirm-errors').replaceChildren(h('div', {}, e.message));
     status(e instanceof PublishError ? e.message : '公開できませんでした。内容を確認してください。');
     ok.disabled = false;
+    return;
+  }
+  // ここから先は公開済み。読み込み直しに失敗しても「公開できなかった」とは言わない。
+  $('#confirm').close();
+  safe.del(DRAFT_KEY);
+  for (const k of Object.keys(pending)) delete pending[k];
+  try {
+    await loadSite();
+    status('公開しました。反映まで 1〜2 分ほどかかります。');
+  } catch {
+    status('公開しました(反映まで 1〜2 分ほどかかります)。続けて編集する場合は、ページを読み込み直してください。');
+    $('#publish').disabled = true;
   }
 }
 
@@ -234,8 +248,20 @@ async function loadSite() {
   if (raw) {
     try {
       const d = JSON.parse(raw);
-      if (d.headSha === site.headSha) { models = d.models; status('前回の下書きを復元しました'); }
-    } catch { /* 壊れた下書きは無視する */ }
+      const shape = (m) => JSON.stringify(Object.keys(m).sort());
+      if (!d.models || shape(d.models) !== shape(original)) throw new Error('形が違う下書き');
+      const note = d.photoKeys?.length ? '(選んだ写真は、もう一度選んでください)' : '';
+      if (d.headSha === site.headSha) {
+        models = d.models;
+        status(`前回の下書きを復元しました${note}`);
+      } else if (d.base && shape(d.base) === shape(original)) {
+        const r = rebaseModels(d.base, d.models, original);
+        models = r.models;
+        status(r.clashed.length
+          ? `ほかの変更と重なった所は新しい内容にしました: ${r.clashed.join('、')}。それ以外の下書きは復元しました${note}`
+          : `ほかの変更を取り込んで、前回の下書きを復元しました${note}`);
+      }
+    } catch { safe.del(DRAFT_KEY); /* 壊れた下書きは捨てる */ }
   }
   render();
   schedulePreview();

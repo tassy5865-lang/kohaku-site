@@ -32,13 +32,16 @@ export class SiteRepo {
     } catch {
       throw new PublishError('NETWORK', '通信できませんでした。電波の良い場所で、もう一度お試しください。何も変更されていません。');
     }
+    if (res.status === 403 && (res.headers?.get?.('x-ratelimit-remaining') === '0' || res.headers?.get?.('retry-after'))) {
+      throw new PublishError('RATE', 'アクセスが集中しています。10分ほど待ってから、もう一度お試しください。何も変更されていません。');
+    }
     if (res.status === 401 || res.status === 403) {
       throw new PublishError('AUTH', '管理画面の鍵の有効期限が切れています。田代さんに連絡してください。');
     }
     if (!res.ok) {
       const conflict = method === 'PATCH' && (res.status === 422 || res.status === 409);
       if (conflict) {
-        throw new PublishError('CONFLICT', 'ほかの変更が先に入っていました。ページを読み込み直して、もう一度編集してください(何も上書きしていません)。');
+        throw new PublishError('CONFLICT', 'ほかの変更が先に入っていました。ページを読み込み直して、もう一度ログインしてください。編集中の内容は引き継がれます(何も上書きしていません)。');
       }
       throw new PublishError('OTHER', `うまくいきませんでした(${res.status})。しばらくしてからもう一度お試しください。`);
     }
@@ -56,6 +59,10 @@ export class SiteRepo {
   async commit({ headSha, treeSha, files, message }) {
     const entries = [];
     for (const f of files) {
+      if (f.remove) { // 使わなくなった画像を同じコミットで消す
+        entries.push({ path: f.path, mode: '100644', type: 'blob', sha: null });
+        continue;
+      }
       const bytes = typeof f.content === 'string' ? new TextEncoder().encode(f.content) : f.content;
       const blob = await this.#api('/git/blobs', { method: 'POST', body: { content: toBase64(bytes), encoding: 'base64' } });
       entries.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });

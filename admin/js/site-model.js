@@ -69,6 +69,28 @@ export function applyModels(html, m, { preview = false } = {}) {
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+// 下書き(mine)を、別の変更が入った最新(latest)に載せ替える。base は下書きを始めた時点の状態。
+// 自分だけが触った領域は下書きを、誰も触っていない領域は最新を、両方が違う内容に変えた領域は最新を使う。
+export function rebaseModels(base, mine, latest) {
+  const out = structuredClone(latest);
+  const clash = structuredClone(base);
+  let clashed = false;
+  const pick = (get, set) => {
+    const b = get(base), m = get(mine), l = get(latest);
+    if (same(b, m)) return;                       // 自分は触っていない
+    if (same(b, l) || same(m, l)) set(out, m);    // 相手が触っていない(または同じ変更)
+    else { set(clash, m); clashed = true; }       // 両方が違う内容に変更
+  };
+  for (const k of Object.keys(latest)) {
+    if (k === 'groups' || k === 'photos') {
+      for (const s of Object.keys(latest[k])) pick((o) => o[k][s], (o, v) => { o[k][s] = v; });
+    } else {
+      pick((o) => o[k], (o, v) => { o[k] = v; });
+    }
+  }
+  return { models: out, clashed: clashed ? summarizeChanges(base, clash) : [] };
+}
 export function summarizeChanges(before, after) {
   const out = [];
   if (!same(before.notice, after.notice)) out.push('お知らせ');

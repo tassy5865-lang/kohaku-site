@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readModels, applyModels, summarizeChanges } from '../js/site-model.js';
+import { readModels, applyModels, summarizeChanges, rebaseModels } from '../js/site-model.js';
 
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const norm = (s) => s.replace(/\r\n/g, '\n').replace(/>\s+</g, '><').trim();
@@ -62,4 +62,28 @@ test('summarizeChanges names what changed', () => {
   assert.ok(s.some((x) => x.includes('ローズフェイシャル')));
   assert.ok(s.some((x) => x.includes('よくある質問')));
   assert.ok(s.some((x) => x.includes('写真')));
+});
+
+test('rebaseModels: keeps my edits, takes others\' edits, latest wins only on a real clash', () => {
+  const base = readModels(html);
+  const mine = structuredClone(base);
+  mine.groups.rose.rows[0].yen = '¥5,900';   // 自分だけが変更
+  mine.notice = '自分のお知らせ';             // 両方が変更
+  mine.faq.pop();                            // 自分だけが変更
+  const latest = structuredClone(base);
+  latest.groups.pair.rows[0].yen = '¥7,000'; // 相手だけが変更
+  latest.notice = '相手のお知らせ';
+  const r = rebaseModels(base, mine, latest);
+  assert.equal(r.models.groups.rose.rows[0].yen, '¥5,900');
+  assert.equal(r.models.groups.pair.rows[0].yen, '¥7,000');
+  assert.equal(r.models.faq.length, base.faq.length - 1);
+  assert.equal(r.models.notice, '相手のお知らせ');
+  assert.deepEqual(r.clashed, ['お知らせ']);
+});
+
+test('rebaseModels: no clash reports nothing', () => {
+  const base = readModels(html);
+  const r = rebaseModels(base, structuredClone(base), structuredClone(base));
+  assert.deepEqual(r.clashed, []);
+  assert.deepEqual(r.models, base);
 });

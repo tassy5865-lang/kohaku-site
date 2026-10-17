@@ -90,3 +90,21 @@ test('the token is only sent as a bearer header', async () => {
   assert.ok(!seen.url.includes('SECRET'));
   assert.equal(seen.init.headers.Authorization, 'Bearer SECRET');
 });
+
+test('403 with an exhausted rate limit is RATE, a plain 403 stays AUTH', async () => {
+  const mk = (headers) => async () => ({ ok: false, status: 403, headers: new Headers(headers), json: async () => ({}) });
+  const rate = new SiteRepo({ owner: 'o', repo: 'r', token: 't', fetchImpl: mk({ 'x-ratelimit-remaining': '0' }) });
+  await assert.rejects(() => rate.load(), (e) => e.code === 'RATE' && /待って/.test(e.message));
+  const plain = new SiteRepo({ owner: 'o', repo: 'r', token: 't', fetchImpl: mk({}) });
+  await assert.rejects(() => plain.load(), (e) => e.code === 'AUTH');
+});
+
+test('a file marked remove is deleted in the same commit (sha: null)', async () => {
+  const { st, f } = fakeGithub();
+  const repo = new SiteRepo({ owner: 'o', repo: 'r', token: 't', fetchImpl: f });
+  const s = await repo.load();
+  await repo.commit({ ...s, files: [{ path: 'index.html', content: 'x' }, { path: 'images/old.jpg', remove: true }], message: 'm' });
+  const tree = Object.values(st.trees)[0].tree;
+  assert.deepEqual(tree.find((t) => t.path === 'images/old.jpg').sha, null);
+  assert.equal(st.calls.filter((c) => c === 'POST /git/blobs').length, 1);
+});
