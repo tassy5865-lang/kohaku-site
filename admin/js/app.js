@@ -8,6 +8,9 @@ import { formatYen } from './price.js';
 import { toJpeg, bytesToDataUrl } from './images.js';
 import { makePreview } from './preview.js';
 
+// 他のサイトの枠に埋め込まれていたら何も表示しない(クリックジャッキング対策)
+if (window.top !== window.self) document.documentElement.classList.add('framed');
+
 const $ = (s) => document.querySelector(s);
 function h(tag, props = {}, ...kids) {
   const e = document.createElement(tag);
@@ -275,6 +278,26 @@ async function login(pass) {
   await loadSite();
 }
 
+// ---------- 放置したら鍵を手放す ----------
+// 30 分操作がなければ、メモリ上の鍵を捨てて入口に戻す。下書きは残るので、入り直せば続きから編集できる。
+const IDLE_MS = 30 * 60 * 1000;
+let idleTimer;
+function lock(message) {
+  clearTimeout(idleTimer);
+  repo = undefined; site = undefined;
+  $('#confirm').close();
+  $('#editor').hidden = true;
+  $('#login').hidden = false;
+  $('#preview').srcdoc = '';
+  $('#login-msg').textContent = message;
+}
+function touch() {
+  if (!repo) return;
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => lock('しばらく操作がなかったため、安全のためログアウトしました。編集中の内容は残っています。'), IDLE_MS);
+}
+for (const ev of ['pointerdown', 'keydown', 'input']) document.addEventListener(ev, touch, { passive: true });
+
 $('#login-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const msg = $('#login-msg');
@@ -285,6 +308,7 @@ $('#login-form').addEventListener('submit', async (ev) => {
     $('#login').hidden = true;
     $('#editor').hidden = false;
     msg.textContent = '';
+    touch();
   } catch (e) {
     msg.textContent = e.message || 'うまくいきませんでした。';
   }

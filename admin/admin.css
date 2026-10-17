@@ -28,3 +28,5 @@ input[aria-invalid="true"] { border-color:var(--err); }
 .small { font-size:.85rem; opacity:.8; }
 .thumb { width:120px; height:120px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
 .dialog { border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); max-width:520px; }
+
+html.framed body { display: none; }
