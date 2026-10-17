@@ -27,6 +27,6 @@
 - URL: `https://tassy5865-lang.github.io/kohaku-site/admin/`。店主がパスワードで入り、文章・料金メニュー・写真・お知らせを編集して公開する
 - 編集できる範囲は `index.html` の `<!--edit:KEY-->…<!--/edit:KEY-->` と `data-photo="KEY"`。**この目印を消さない。領域を増やすときは `admin/js/site-model.js` も直す**
 - 保存は GitHub Git Data API で `index.html` と画像を 1 コミット。トークンは `admin/config.json` にパスワードで暗号化して置く(fine-grained PAT、このリポジトリの Contents のみ、有効90日)
-- トークンの作成・更新: 新しいトークンを作り、`KOHAKU_TOKEN` `KOHAKU_PASS`(16文字以上)を環境変数に入れて `node tools/make-config.mjs` → `admin/config.json` をコミット・push
+- トークンの作成・更新: 新しいトークンを作り、ご自身のターミナル(チャット・画面共有に出さない)で `node tools/gen-passphrase.mjs` のパスワードと `KOHAKU_TOKEN` `KOHAKU_PASS` を環境変数に入れて `node tools/make-config.mjs` → `admin/config.json` をコミット・push。表示される `…/admin/#k=…` のリンクを、パスワードとは**別の経路**で店主に渡す(鍵は「パスワード+リンクの秘密」から作る。暗号文は公開リポジトリにあるので、秘密がないと総当たりできない)。トークン更新でリンクを変えたくないときは `KOHAKU_KEY`(リンクの `k=` の値)を同じにして実行する。店主はリンクを1回開けばその端末に保存され、以後はパスワードだけで入れる。`config.json` が v1(秘密なし)の間は、この保護は効いていない。
 - 検査ルールは `tools/rules.json`(`check_site.py` と管理画面の公開前検査が共有)。必須語・禁止語を変えるときはここだけ直す
 - テスト: `npm test`(依存パッケージなし、Node 20+)。CI(GitHub Actions)は `workflow` 権限が無く未設置

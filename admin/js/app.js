@@ -270,10 +270,22 @@ async function loadSite() {
   schedulePreview();
 }
 
+// 秘密の鍵はリンクの #k=… で渡される。受け取ったらこの端末に保存し、アドレス欄からは消す。
+const KEY_STORE = 'kohaku-admin-key';
+function takeKey() {
+  const m = /[#&]k=([\w-]{16,})/.exec(location.hash);
+  if (m) {
+    safe.set(KEY_STORE, m[1]);
+    history.replaceState(null, '', location.pathname + location.search);
+    return m[1];
+  }
+  return safe.get(KEY_STORE) || '';
+}
+
 async function login(pass) {
   const config = await (await fetch('config.json', { cache: 'no-store' })).json();
   rules = await (await fetch('../tools/rules.json', { cache: 'no-store' })).json();
-  const token = await decryptToken(config.box, pass);
+  const token = await decryptToken(config.box, pass, takeKey());
   repo = new SiteRepo({ owner: config.owner, repo: config.repo, branch: config.branch, token });
   await loadSite();
 }
