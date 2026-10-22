@@ -6,7 +6,8 @@ const rules = JSON.parse(readFileSync(new URL('../../tools/rules.json', import.m
 
 test('rules.json has the expected keys', () => {
   for (const k of ['mustContain', 'mustNotContain', 'mustLink', 'forbiddenRe', 'sectionIds']) {
-    assert.ok(Array.isArray(rules[k]) && rules[k].length > 0, k);
+    // mustContain は空でもよい(必須語を課さない運用)
+    assert.ok(Array.isArray(rules[k]) && (k === 'mustContain' || rules[k].length > 0), k);
   }
 });
 

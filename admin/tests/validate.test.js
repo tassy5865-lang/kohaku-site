@@ -41,7 +41,7 @@ test('a phone-number-like string is rejected', () => {
 test('removing a required phrase is reported', () => {
   const m = readModels(html);
   m.about = m.about.filter((b) => !b.text.includes('12年目')); // 「12年目」は自己紹介にしかない
-  const errs = validateDocument(applyModels(html, m), rules);
+  const errs = validateDocument(applyModels(html, m), { ...rules, mustContain: ['12年目'] }); // 必須語の仕組み自体を確かめる
   assert.ok(errs.some((e) => e.includes('12年目')), errs.join('\n'));
 });
 
