@@ -88,7 +88,7 @@ def main():
         m = re.search(pat, raw)
         if m:
             errors.append(f"{label}: {m.group(0)}")
-    rows = [(re.sub(r"\s+", " ", n).strip(), y.strip()) for n, y in
+    rows = [(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", n)).strip(), y.strip()) for n, y in
             re.findall(r'<span class="name">(.*?)</span><span class="yen">(.*?)</span>', raw)]
     if not rows:
         errors.append("料金表の行がありません")
@@ -143,6 +143,8 @@ def main():
             errors.append(f"画像ファイルがありません: {src}")
     for tag, a in scan.links:
         href = a["href"]
+        if href.startswith("http://"):
+            errors.append(f"http:// のリンクは使えません(https:// にしてください): {href}")
         if href.startswith("http"):
             if tag == "a" and ("noopener" not in a.get("rel", "") or a.get("target") != "_blank"):
                 errors.append(f"外部リンクに target=_blank rel=noopener がありません: {href}")

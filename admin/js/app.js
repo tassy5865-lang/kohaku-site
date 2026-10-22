@@ -1,10 +1,10 @@
 import { decryptToken } from './crypto.js';
 import { SiteRepo, PublishError } from './github.js';
-import { readModels, applyModels, summarizeChanges, rebaseModels, GROUPS, PHOTOS } from './site-model.js';
+import { readModels, applyModels, summarizeChanges, rebaseModels, managedImages, PHOTOS } from './site-model.js';
 import { validateDocument } from './validate.js';
 import { blocksToText, textToBlocks } from './blocks.js';
 import { listToText, textToList } from './list.js';
-import { formatYen } from './price.js';
+import { formatYen, newGroup, validateGroups, isLinkUrl, MAX_GROUPS } from './price.js';
 import { toJpeg, bytesToDataUrl } from './images.js';
 import { makePreview } from './preview.js';
 
@@ -38,11 +38,20 @@ const safe = {
 
 function status(text) { $('#status').textContent = text; }
 
+const groupPhotoKey = (g) => `menu-${g.id}`;
+
 function strip(m) { // 下書きには、まだ公開していない写真を入れない
   const c = structuredClone(m);
   for (const k of Object.keys(c.photos)) {
     if (pending[k]) c.photos[k] = structuredClone(original.photos[k]);
     delete c.photos[k].previewSrc;
+  }
+  for (const g of c.groups) {
+    if (!g.photo) continue;
+    if (pending[groupPhotoKey(g)]) {
+      g.photo = structuredClone(original.groups.find((o) => o.id === g.id)?.photo ?? { src: '', alt: g.photo.alt, width: 0, height: 0 });
+    }
+    delete g.photo.previewSrc;
   }
   return c;
 }
@@ -130,53 +139,111 @@ function pricePanel() {
       field('時間', input(c.time, (v) => { c.time = v; changed(); })),
       field('通常価格(空にすると非表示)', input(c.regular, (v) => { c.regular = v; changed(); }, { inputmode: 'numeric' })),
       field('今回の価格', input(c.price, (v) => { c.price = v; changed(); }, { inputmode: 'numeric' }))),
-    ...Object.entries(GROUPS).map(([k, label]) => {
-      const g = m.groups[k];
-      return h('div', { class: 'card' },
-        h('h2', {}, label),
-        field('見出し', input(g.title, (v) => { g.title = v; changed(); })),
-        field('見出しの下の注記(1行に1つ)', textarea(g.intro.join('\n'), (v) => { g.intro = v.split('\n').filter((s) => s.trim()); changed(); }, 2)),
-        ...g.rows.map((r, i) => h('div', { class: 'row' },
-          input(r.name, (v) => { r.name = v; changed(); }, { 'aria-label': 'メニュー名' }),
-          yenInput(r),
-          btn('↑', () => { moveItem(g.rows, i, -1); changed(); render(); }),
-          btn('↓', () => { moveItem(g.rows, i, 1); changed(); render(); }),
-          btn('削除', () => { g.rows.splice(i, 1); changed(); render(); }))),
-        btn('行を追加', () => { g.rows.push({ name: '', yen: '' }); changed(); render(); }),
-        field('一覧の下の注記(1行に1つ)', textarea(g.notes.join('\n'), (v) => { g.notes = v.split('\n').filter((s) => s.trim()); changed(); }, 2)));
-    }),
+    h('h2', {}, 'メニューのカテゴリ'),
+    h('p', { class: 'small' }, 'カテゴリごとに、見出し・料金の行・写真を編集できます。写真つきのカテゴリは、写真の左右が上から順に自動で入れ替わります。'),
+    ...m.groups.map((g, i) => groupCard(g, i)),
+    h('div', { class: 'row' },
+      addGroupButton('カテゴリを追加(写真なし)', false),
+      addGroupButton('カテゴリを追加(写真つき)', true)),
+    m.groups.length >= MAX_GROUPS ? h('p', { class: 'small' }, `カテゴリは${MAX_GROUPS}個までです。`) : null,
   );
+}
+
+function addGroupButton(label, withPhoto) {
+  const b = btn(label, () => { models.groups.push(newGroup(models.groups, withPhoto)); changed(); render(); });
+  b.disabled = models.groups.length >= MAX_GROUPS;
+  return b;
+}
+
+function urlInput(row) {
+  const i = input(row.url ?? '', (v) => { row.url = v; i.setAttribute('aria-invalid', String(Boolean(v.trim()) && !isLinkUrl(v))); changed(); },
+    { inputmode: 'url', placeholder: 'リンク先(任意) https://…', 'aria-label': 'リンク先のアドレス(任意)' });
+  i.setAttribute('aria-invalid', String(Boolean((row.url ?? '').trim()) && !isLinkUrl(row.url)));
+  return i;
+}
+
+function deleteGroupButton(i) {
+  const g = models.groups[i];
+  const b = btn('カテゴリを削除', () => {
+    if (!b.dataset.armed) {
+      b.dataset.armed = '1';
+      b.textContent = 'もう一度押すと削除します';
+      setTimeout(() => { delete b.dataset.armed; b.textContent = 'カテゴリを削除'; }, 4000);
+      return;
+    }
+    delete pending[groupPhotoKey(g)];
+    models.groups.splice(i, 1);
+    changed();
+    render();
+  });
+  return b;
+}
+
+function groupCard(g, i) {
+  const m = models;
+  const photoToggle = h('input', { type: 'checkbox', checked: Boolean(g.photo) });
+  photoToggle.addEventListener('change', () => {
+    if (photoToggle.checked) g.photo = { src: '', alt: '', width: 0, height: 0 };
+    else { g.photo = null; delete pending[groupPhotoKey(g)]; }
+    changed();
+    render();
+  });
+  return h('div', { class: 'card' },
+    h('h2', {}, `カテゴリ ${i + 1}${g.title.trim() ? `:${g.title.trim()}` : ''}`),
+    h('div', { class: 'row' },
+      btn('↑ 上へ', () => { moveItem(m.groups, i, -1); changed(); render(); }),
+      btn('↓ 下へ', () => { moveItem(m.groups, i, 1); changed(); render(); }),
+      deleteGroupButton(i)),
+    field('見出し(カテゴリ名)', input(g.title, (v) => { g.title = v; changed(); })),
+    h('label', { class: 'check' }, photoToggle, '写真をつける'),
+    g.photo ? h('div', {}, ...photoFields(groupPhotoKey(g), g.photo)) : null,
+    field('見出しの下の注記(1行に1つ)', textarea(g.intro.join('\n'), (v) => { g.intro = v.split('\n').filter((s) => s.trim()); changed(); }, 2)),
+    ...g.rows.map((r, j) => h('div', { class: 'rowset' },
+      h('div', { class: 'row' },
+        input(r.name, (v) => { r.name = v; changed(); }, { 'aria-label': 'メニュー名' }),
+        yenInput(r),
+        btn('↑', () => { moveItem(g.rows, j, -1); changed(); render(); }),
+        btn('↓', () => { moveItem(g.rows, j, 1); changed(); render(); }),
+        btn('削除', () => { g.rows.splice(j, 1); changed(); render(); })),
+      h('div', { class: 'row' }, urlInput(r)))),
+    btn('行を追加', () => { g.rows.push({ name: '', yen: '', url: '' }); changed(); render(); }),
+    field('一覧の下の注記(1行に1つ)', textarea(g.notes.join('\n'), (v) => { g.notes = v.split('\n').filter((s) => s.trim()); changed(); }, 2)));
+}
+
+// 写真の選択欄(サムネイル・差し替え・説明文)。写真タブとメニューのカテゴリで共用する。
+function photoFields(key, p) {
+  const msg = h('p', { class: 'msg', role: 'alert' });
+  const file = h('input', { type: 'file', accept: 'image/*' });
+  file.addEventListener('change', async () => {
+    msg.textContent = '';
+    if (!file.files[0]) return;
+    try {
+      const { bytes, width, height } = await toJpeg(file.files[0]);
+      const path = `images/photo-${key}-${Date.now().toString(36)}.jpg`;
+      pending[key] = { path, bytes };
+      Object.assign(p, { src: path, width, height, previewSrc: bytesToDataUrl(bytes) });
+      changed();
+      render();
+    } catch (e) {
+      msg.textContent = e.message;
+      file.value = '';
+    }
+  });
+  const shown = p.previewSrc || (p.src ? `../${p.src}` : '');
+  return [
+    shown ? h('img', { class: 'thumb', src: shown, alt: '' }) : h('p', { class: 'small' }, 'まだ写真が選ばれていません。'),
+    field(p.src ? '写真を差し替える' : '写真を選ぶ', file),
+    field('説明文', input(p.alt, (v) => { p.alt = v; changed(); })),
+    msg,
+  ];
 }
 
 function photoPanel() {
   return h('div', {},
     h('p', { class: 'small' }, '写真を選ぶと自動で縮小されます。説明文は、目の見えない方や写真が表示されないときに読み上げられます。'),
-    ...Object.entries(PHOTOS).map(([k, label]) => {
-      const p = models.photos[k];
-      const msg = h('p', { class: 'msg', role: 'alert' });
-      const file = h('input', { type: 'file', accept: 'image/*' });
-      file.addEventListener('change', async () => {
-        msg.textContent = '';
-        if (!file.files[0]) return;
-        try {
-          const { bytes, width, height } = await toJpeg(file.files[0]);
-          const path = `images/photo-${k}-${Date.now().toString(36)}.jpg`;
-          pending[k] = { path, bytes };
-          Object.assign(p, { src: path, width, height, previewSrc: bytesToDataUrl(bytes) });
-          changed();
-          render();
-        } catch (e) {
-          msg.textContent = e.message;
-          file.value = '';
-        }
-      });
-      return h('div', { class: 'card' },
-        h('h2', {}, label),
-        h('img', { class: 'thumb', src: p.previewSrc || `../${p.src}`, alt: '' }),
-        field('写真を差し替える', file),
-        field('説明文', input(p.alt, (v) => { p.alt = v; changed(); })),
-        msg);
-    }),
+    ...Object.entries(PHOTOS).map(([k, label]) => h('div', { class: 'card' }, h('h2', {}, label), ...photoFields(k, models.photos[k]))),
+    ...models.groups.filter((g) => g.photo).map((g) => h('div', { class: 'card' },
+      h('h2', {}, `メニュー:${g.title.trim() || '(名前なし)'}`), ...photoFields(groupPhotoKey(g), g.photo))),
   );
 }
 
@@ -196,7 +263,7 @@ function render() {
 // ---------- 公開 ----------
 function buildFinal() {
   const html = applyModels(site.html, models);
-  return { html, errors: validateDocument(html, rules) };
+  return { html, errors: [...validateGroups(models.groups), ...validateDocument(html, rules)] };
 }
 
 function openConfirm() {
@@ -216,12 +283,12 @@ async function publish() {
   try {
     const { html, errors } = buildFinal();
     if (errors.length) throw new Error(errors[0]);
-    const files = [{ path: 'index.html', content: html }, ...Object.values(pending).map((p) => ({ path: p.path, content: p.bytes }))];
-    // 差し替えで使わなくなった、管理画面が作った画像は同じコミットで消す(手で置いた画像は消さない)
-    for (const k of Object.keys(pending)) {
-      const old = original.photos[k].src;
-      if (/^images\/photo-[\w-]+-[a-z0-9]+\.jpg$/.test(old) && !html.includes(old)) files.push({ path: old, remove: true });
-    }
+    // ページに載らなくなった写真(カテゴリごと消した・外した)は、アップロードしない
+    const files = [{ path: 'index.html', content: html },
+      ...Object.values(pending).filter((p) => html.includes(p.path)).map((p) => ({ path: p.path, content: p.bytes }))];
+    // 差し替え・削除で使わなくなった、管理画面が作った画像は同じコミットで消す(手で置いた画像は消さない)
+    const stillUsed = managedImages(html);
+    for (const old of managedImages(site.html)) if (!stillUsed.has(old)) files.push({ path: old, remove: true });
     const summary = summarizeChanges(original, models).join('、');
     await repo.commit({ headSha: site.headSha, treeSha: site.treeSha, files, message: `管理画面から更新: ${summary}` });
   } catch (e) {
@@ -252,12 +319,12 @@ async function loadSite() {
     try {
       const d = JSON.parse(raw);
       const shape = (m) => JSON.stringify(Object.keys(m).sort());
-      if (!d.models || shape(d.models) !== shape(original)) throw new Error('形が違う下書き');
+      if (!d.models || shape(d.models) !== shape(original) || !Array.isArray(d.models.groups)) throw new Error('形が違う下書き');
       const note = d.photoKeys?.length ? '(選んだ写真は、もう一度選んでください)' : '';
       if (d.headSha === site.headSha) {
         models = d.models;
         status(`前回の下書きを復元しました${note}`);
-      } else if (d.base && shape(d.base) === shape(original)) {
+      } else if (d.base && shape(d.base) === shape(original) && Array.isArray(d.base.groups)) {
         const r = rebaseModels(d.base, d.models, original);
         models = r.models;
         status(r.clashed.length

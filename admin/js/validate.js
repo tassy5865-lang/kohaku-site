@@ -37,7 +37,7 @@ export function validateDocument(html, rules) {
   const rows = [...html.matchAll(/<span class="name">([\s\S]*?)<\/span><span class="yen">([\s\S]*?)<\/span>/g)];
   if (!rows.length) errs.push('料金表の行がありません');
   for (const m of rows) {
-    const name = unescapeHtml(m[1]).replace(/\s+/g, ' ').trim();
+    const name = unescapeHtml(m[1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
     const yen = unescapeHtml(m[2]).trim();
     if (!name) errs.push('名前が空の料金行があります');
     if (!YEN_RE.test(yen)) errs.push(`料金の形式が正しくありません: 「${name}」→「${yen}」(例: ¥10,000)`);
@@ -50,10 +50,9 @@ export function validateDocument(html, rules) {
 
   for (const m of html.matchAll(/<img\b[^>]*>/g)) {
     const alt = /\salt="([^"]*)"/.exec(m[0]);
-    if (!alt || !alt[1].trim()) {
-      const src = /\ssrc="([^"]*)"/.exec(m[0]);
-      errs.push(`写真に説明文(代替テキスト)がありません: ${src ? src[1] : ''}`);
-    }
+    const src = /\ssrc="([^"]*)"/.exec(m[0]);
+    // 写真が未選択の img は、カテゴリ検査(validateGroups)が「写真が選ばれていません」と知らせる
+    if ((!alt || !alt[1].trim()) && src && src[1]) errs.push(`写真に説明文(代替テキスト)がありません: ${src[1]}`);
   }
   if ((html.match(/<h1\b/g) || []).length !== 1) errs.push('h1 が 1 つではありません');
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { validateDocument } from '../js/validate.js';
 import { readModels, applyModels } from '../js/site-model.js';
 
+const grp = (m, id) => m.groups.find((g) => g.id === id);
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const rules = JSON.parse(readFileSync(new URL('../../tools/rules.json', import.meta.url), 'utf8'));
 
@@ -13,14 +14,14 @@ test('the real page passes', () => {
 
 test('a price in a bad format is rejected with the row name', () => {
   const m = readModels(html);
-  m.groups.pair.rows[0].yen = '1万';
+  grp(m, 'pair').rows[0].yen = '1万';
   const errs = validateDocument(applyModels(html, m), rules);
   assert.ok(errs.some((e) => e.includes('料金の形式が正しくありません') && e.includes('よもぎ蒸し')), errs.join('\n'));
 });
 
 test('empty price is rejected', () => {
   const m = readModels(html);
-  m.groups.body.rows[0].yen = '';
+  grp(m, 'body').rows[0].yen = '';
   assert.ok(validateDocument(applyModels(html, m), rules).length > 0);
 });
 

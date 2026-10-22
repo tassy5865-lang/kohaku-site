@@ -2,24 +2,15 @@ import { getRegion, setRegion, getPhoto, setPhoto } from './regions.js';
 import { parseBlocks, renderBlocks } from './blocks.js';
 import { parseList, renderList } from './list.js';
 import { parseFaq, renderFaq } from './faq.js';
-import { parseCard, renderCard, parseGroup, renderGroup } from './price.js';
+import { parseCard, renderCard, parseGroups, renderGroups } from './price.js';
 import { toInline, fromInline } from './text.js';
 
-export const GROUPS = {
-  rose: 'ローズフェイシャル',
-  body: 'アロマボディトリートメント',
-  course: 'コース',
-  pair: 'ペア蒸し',
-};
 export const PHOTOS = {
   'hero-l': 'トップ(左)',
   'hero-r': 'トップ(右)',
   about: '自己紹介',
   'kodawari-1': 'こだわり(1枚目)',
   'kodawari-2': 'こだわり(2枚目)',
-  'menu-rose': 'メニュー(ローズ)',
-  'menu-body': 'メニュー(ボディ)',
-  'menu-pair': 'メニュー(ペア蒸し)',
   access: 'アクセス',
 };
 
@@ -32,8 +23,6 @@ function renderNotice(text) {
 }
 
 export function readModels(html) {
-  const groups = {};
-  for (const k of Object.keys(GROUPS)) groups[k] = parseGroup(getRegion(html, `menu-${k}`));
   const photos = {};
   for (const k of Object.keys(PHOTOS)) photos[k] = getPhoto(html, k);
   return {
@@ -44,7 +33,7 @@ export function readModels(html) {
     kodawari: parseList(getRegion(html, 'kodawari-points')),
     faq: parseFaq(getRegion(html, 'faq')),
     card: parseCard(getRegion(html, 'price-card')),
-    groups,
+    groups: parseGroups(getRegion(html, 'menu-groups')),
     photos,
   };
 }
@@ -58,15 +47,16 @@ export function applyModels(html, m, { preview = false } = {}) {
   out = setRegion(out, 'kodawari-points', renderList(m.kodawari, { indent: '            ', closeIndent: '          ' }));
   out = setRegion(out, 'faq', renderFaq(m.faq, { indent: '        ', closeIndent: '      ' }));
   out = setRegion(out, 'price-card', renderCard(m.card, { indent: '          ', closeIndent: '        ' }));
-  for (const k of Object.keys(GROUPS)) {
-    out = setRegion(out, `menu-${k}`, renderGroup(m.groups[k], { indent: '          ', closeIndent: '          ' }));
-  }
+  out = setRegion(out, 'menu-groups', renderGroups(m.groups, { indent: '        ', closeIndent: '        ', preview }));
   for (const k of Object.keys(PHOTOS)) {
     const p = m.photos[k];
     out = setPhoto(out, k, { ...p, src: preview && p.previewSrc ? p.previewSrc : p.src });
   }
   return out;
 }
+
+// 管理画面が作った写真ファイル(手で置いた画像は含めない)。ページから外れたものは公開時に消す。
+export const managedImages = (html) => new Set(html.match(/images\/photo-[\w-]+-[a-z0-9]+\.jpg/g) ?? []);
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -83,13 +73,68 @@ export function rebaseModels(base, mine, latest) {
     else { set(clash, m); clashed = true; }       // 両方が違う内容に変更
   };
   for (const k of Object.keys(latest)) {
-    if (k === 'groups' || k === 'photos') {
+    if (k === 'photos') {
       for (const s of Object.keys(latest[k])) pick((o) => o[k][s], (o, v) => { o[k][s] = v; });
+    } else if (k === 'groups') {
+      if (rebaseGroups(base.groups, mine.groups, latest.groups, out, clash)) clashed = true;
     } else {
       pick((o) => o[k], (o, v) => { o[k] = v; });
     }
   }
   return { models: out, clashed: clashed ? summarizeChanges(base, clash) : [] };
+}
+
+// メニューのカテゴリは、id ごとに合流させる(別々のカテゴリを直していても衝突にしない)。
+function rebaseGroups(base, mine, latest, out, clash) {
+  const find = (arr, id) => arr.find((g) => g.id === id);
+  const ids = (arr) => arr.map((g) => g.id);
+  let clashed = false;
+  let result = structuredClone(latest);
+  const clashed_ = structuredClone(base);
+  const put = (arr, g) => { const i = arr.findIndex((x) => x.id === g.id); if (i >= 0) arr[i] = structuredClone(g); else arr.push(structuredClone(g)); };
+  const drop = (arr, id) => { const i = arr.findIndex((x) => x.id === id); if (i >= 0) arr.splice(i, 1); };
+  for (const b of base) {
+    const m = find(mine, b.id);
+    const l = find(latest, b.id);
+    if (!m) {                                                     // 自分が削除した
+      if (!l) continue;
+      if (same(b, l)) drop(result, b.id);
+      else { drop(clashed_, b.id); clashed = true; }              // 相手が編集したカテゴリを、自分は削除した
+    } else if (!l) {                                              // 相手が削除した
+      if (!same(b, m)) { put(clashed_, m); clashed = true; }
+    } else if (!same(b, m)) {                                     // 自分が編集した
+      if (same(b, l) || same(m, l)) put(result, m);
+      else { put(clashed_, m); clashed = true; }
+    }
+  }
+  for (const m of mine) if (!find(base, m.id) && !find(result, m.id)) result.push(structuredClone(m)); // 自分が追加した
+  if (same(ids(base), ids(latest))) {                             // 並び順は、相手が動かしていなければ自分の順にする
+    const order = ids(mine).filter((id) => find(result, id));
+    result = [...order.map((id) => find(result, id)), ...result.filter((g) => !order.includes(g.id))];
+  }
+  out.groups = result;
+  clash.groups = clashed_;
+  return clashed;
+}
+const photoKey = (g) => (g.photo ? `${g.photo.src}|${g.photo.alt}` : null);
+const linkKeys = (groups) => groups.flatMap((g) => g.rows.filter((r) => r.url?.trim()).map((r) => ({ k: JSON.stringify([g.id, r.name, r.url.trim()]), name: r.name, url: r.url.trim() })));
+function summarizeGroups(before, after) {
+  const out = [];
+  const a = new Map(before.map((g) => [g.id, g]));
+  const b = new Map(after.map((g) => [g.id, g]));
+  for (const g of before) if (!b.has(g.id)) out.push(`カテゴリを削除: ${g.title || '(名前なし)'}`);
+  for (const g of after) if (!a.has(g.id)) out.push(`カテゴリを追加: ${g.title || '(名前なし)'}${g.photo ? '(写真つき)' : ''}`);
+  for (const g of after) {
+    const o = a.get(g.id);
+    if (!o) continue;
+    if (!same({ ...o, photo: null }, { ...g, photo: null })) out.push(`料金: ${g.title || '(名前なし)'}`);
+    if (photoKey(o) !== photoKey(g)) out.push(`写真: メニュー(${g.title || '名前なし'})`);
+  }
+  const common = (arr, other) => arr.filter((g) => other.has(g.id)).map((g) => g.id);
+  if (!same(common(before, b), common(after, a))) out.push('カテゴリの並び順');
+  const had = new Set(linkKeys(before).map((x) => x.k));
+  for (const l of linkKeys(after)) if (!had.has(l.k)) out.push(`リンク: ${l.name || '名前なし'} → ${l.url}`);
+  return out;
 }
 export function summarizeChanges(before, after) {
   const out = [];
@@ -100,9 +145,7 @@ export function summarizeChanges(before, after) {
   if (!same(before.kodawari, after.kodawari)) out.push('サロンのこだわり');
   if (!same(before.faq, after.faq)) out.push('よくある質問');
   if (!same(before.card, after.card)) out.push('初回限定メニュー');
-  for (const [k, label] of Object.entries(GROUPS)) {
-    if (!same(before.groups[k], after.groups[k])) out.push(`料金: ${label}`);
-  }
+  out.push(...summarizeGroups(before.groups, after.groups));
   for (const [k, label] of Object.entries(PHOTOS)) {
     const a = before.photos[k];
     const b = after.photos[k];

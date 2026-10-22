@@ -61,7 +61,7 @@ test('price group: parse', () => {
   assert.deepEqual(parseGroup(GROUP), {
     title: 'ペア蒸し',
     intro: ['2名様分の料金です。'],
-    rows: [{ name: 'よもぎ蒸し', yen: '¥6,000' }, { name: 'まこも蒸し', yen: '¥12,000' }],
+    rows: [{ name: 'よもぎ蒸し', yen: '¥6,000', url: '' }, { name: 'まこも蒸し', yen: '¥12,000', url: '' }],
     notes: ['※注記'],
   });
 });

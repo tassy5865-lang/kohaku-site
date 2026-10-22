@@ -30,3 +30,6 @@ input[aria-invalid="true"] { border-color:var(--err); }
 .dialog { border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); max-width:520px; }
 
 html.framed body { display: none; }
+.check { display:flex; gap:8px; align-items:center; margin:12px 0; }
+.check input { width:auto; }
+.rowset { border-top:1px dashed var(--line); padding-top:4px; margin-top:6px; }
