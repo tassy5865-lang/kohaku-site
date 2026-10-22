@@ -3,10 +3,10 @@
   "repo": "kohaku-site",
   "branch": "main",
   "box": {
-    "v": 1,
+    "v": 2,
     "iter": 600000,
-    "salt": "RKQiEYAWwixS9U3ZY5g1UA==",
-    "iv": "XiwDkDWKtrEd8teG",
-    "ct": "Kr3Rpp8SJqwTzDiu3Dnrc64v2ZNuUc5Nf1RGrIfH7sK88JFzOc/n6YgOsu53Jjbm3kNbXDJN5VHrA1SFkfIbZT01uJo79D0mcHW4UkbHeXnEujpXxMJRCP+ovDTku1o4SP/gcCKGU9eDW8tqLA=="
+    "salt": "SL96p7mE+VIOZrI1gHSVuA==",
+    "iv": "gI69G/fsLZ6o59nP",
+    "ct": "0nsqpdA5Cv+o9su95NEQpMtwoF+JMurYmYrQTqsz1Py015+GdIs18CnZwpx+BGcSRo9zJB36L5iuq2n62HEiyOez/HwnHL8beeDyqeRYTWkGsTiD2gah/VBxd92NY9jl6t5T3ApvyfZhZeb5QQ=="
   }
 }
