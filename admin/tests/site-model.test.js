@@ -16,9 +16,9 @@ test('real page is parsed into the expected shape', () => {
   const m = readModels(html);
   assert.equal(m.notice, '');
   assert.ok(m.about.length > 10);
-  assert.equal(m.card.price, '¥10,000');
-  assert.equal(grp(m, 'pair').rows.length, 4);
-  assert.equal(grp(m, 'rose').rows.length, 4);
+  assert.equal(m.card.price, '¥7,500');
+  assert.equal(grp(m, 'pair').rows.length, 2);
+  assert.equal(grp(m, 'rose').rows.length, 3);
   assert.equal(m.faq.length, 7);
   assert.equal(m.photos['hero-l'].src, 'images/salon-clock.jpg');
 });
@@ -60,7 +60,7 @@ test('summarizeChanges names what changed', () => {
   b.faq.pop();
   b.photos.access.alt = 'x';
   const s = summarizeChanges(a, b);
-  assert.ok(s.some((x) => x.includes('ローズフェイシャル')));
+  assert.ok(s.some((x) => x.includes('フェイシャルコース')));
   assert.ok(s.some((x) => x.includes('よくある質問')));
   assert.ok(s.some((x) => x.includes('写真')));
 });

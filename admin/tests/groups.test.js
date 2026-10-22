@@ -12,7 +12,7 @@ const ids = (m) => m.groups.map((g) => g.id);
 
 test('the real page has the four categories with stable ids', () => {
   const m = readModels(html);
-  assert.deepEqual(ids(m), ['rose', 'body', 'course', 'pair']);
+  assert.deepEqual(ids(m), ['body', 'rose', 'course', 'pair']);
   assert.deepEqual(m.groups.map((g) => Boolean(g.photo)), [true, true, false, true]);
   assert.equal(grp(m, 'rose').photo.src, 'images/salon-herb-plate.jpg');
   assert.ok(m.groups.every((g) => g.rows.every((r) => r.url === '')));
@@ -22,12 +22,12 @@ test('photo categories alternate left/right by order, photo-less ones are skippe
   const m = readModels(html);
   const cls = (out) => [...out.matchAll(/<div class="(price-group[^"]*)" data-group="([^"]+)"/g)].map((x) => [x[2], x[1]]);
   assert.deepEqual(cls(applyModels(html, m)), [
-    ['rose', 'price-group price-group--photo'],
-    ['body', 'price-group price-group--photo price-group--alt'],
+    ['body', 'price-group price-group--photo'],
+    ['rose', 'price-group price-group--photo price-group--alt'],
     ['course', 'price-group'],
     ['pair', 'price-group price-group--photo'],
   ]);
-  m.groups.splice(0, 1); // ローズを消すと、ボディが先頭(通常)、ペアが alt になる
+  m.groups.splice(0, 1); // ボディを消すと、ローズが先頭(通常)、ペアが alt になる
   assert.deepEqual(cls(applyModels(html, m)).map((x) => x[1].includes('--alt')), [false, false, true]);
 });
 
@@ -35,7 +35,7 @@ test('reordering moves a category and keeps its photo marker', () => {
   const m = readModels(html);
   [m.groups[2], m.groups[3]] = [m.groups[3], m.groups[2]];
   const out = applyModels(html, m);
-  assert.deepEqual(ids(readModels(out)), ['rose', 'body', 'pair', 'course']);
+  assert.deepEqual(ids(readModels(out)), ['body', 'rose', 'pair', 'course']);
   assert.equal(readModels(out).groups[2].photo.src, 'images/salon-herbs-hands.jpg');
 });
 
@@ -50,7 +50,7 @@ test('add a photo-less category and a photo category, then read them back', () =
   assert.notEqual(a.id, b.id);
   const out = applyModels(html, m);
   const back = readModels(out);
-  assert.deepEqual(ids(back), ['rose', 'body', 'course', 'pair', a.id, b.id]);
+  assert.deepEqual(ids(back), ['body', 'rose', 'course', 'pair', a.id, b.id]);
   assert.equal(grp(back, a.id).photo, null);
   assert.equal(grp(back, a.id).rows[0].yen, '¥4,000');
   assert.equal(grp(back, b.id).photo.src, 'images/photo-menu-x-abc.jpg');
@@ -100,10 +100,10 @@ test('summarizeChanges names added/removed categories, order, photos and new lin
   grp(b, 'pair').rows[0].url = 'https://example.com/p';
   grp(b, 'rose').photo.src = 'images/photo-menu-rose-zz.jpg';
   const s = summarizeChanges(a, b);
-  assert.ok(s.includes('カテゴリを削除: 香りに包まれて全身満たされるコース'), s.join('|'));
+  assert.ok(s.includes('カテゴリを削除: 全身満たされるトータルコース'), s.join('|'));
   assert.ok(s.includes('カテゴリを追加: 新カテゴリ'));
   assert.ok(s.includes('料金: ペア蒸し'));
-  assert.ok(s.some((x) => x.startsWith('写真: メニュー(至福のローズフェイシャルコース)')));
+  assert.ok(s.some((x) => x.startsWith('写真: メニュー(フェイシャルコース)')));
   assert.ok(s.includes('リンク: よもぎ蒸し → https://example.com/p'));
   const c = structuredClone(a);
   [c.groups[0], c.groups[1]] = [c.groups[1], c.groups[0]];

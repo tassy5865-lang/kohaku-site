@@ -18,7 +18,7 @@ test('notice region is empty by default', () => {
 });
 test('regions hold what we expect', () => {
   assert.match(getRegion(html, 'about'), /はじめまして/);
-  assert.match(getRegion(html, 'menu-groups'), /至福のローズフェイシャルコース/);
+  assert.match(getRegion(html, 'menu-groups'), /フェイシャルコース/);
   assert.match(getRegion(html, 'menu-groups'), /ペア蒸し/);
   assert.match(getRegion(html, 'faq'), /予約は必要ですか/);
 });
