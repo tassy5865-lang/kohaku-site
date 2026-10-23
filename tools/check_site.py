@@ -136,7 +136,7 @@ def main():
         errors.append(f"h1は1つだけ(現在 {scan.h1})")
 
     for img in scan.imgs:
-        if not img.get("alt"):
+        if img.get("alt") is None:
             errors.append(f"altがない画像: {img.get('src')}")
         src = img.get("src", "")
         if src and not src.startswith("http") and not (ROOT / src).exists():

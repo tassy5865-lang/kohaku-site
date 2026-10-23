@@ -52,7 +52,7 @@ export function validateDocument(html, rules) {
     const alt = /\salt="([^"]*)"/.exec(m[0]);
     const src = /\ssrc="([^"]*)"/.exec(m[0]);
     // 写真が未選択の img は、カテゴリ検査(validateGroups)が「写真が選ばれていません」と知らせる
-    if ((!alt || !alt[1].trim()) && src && src[1]) errs.push(`写真に説明文(代替テキスト)がありません: ${src[1]}`);
+    if (!alt && src && src[1]) errs.push(`写真に alt 属性がありません: ${src[1]}`);
   }
   if ((html.match(/<h1\b/g) || []).length !== 1) errs.push('h1 が 1 つではありません');
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);

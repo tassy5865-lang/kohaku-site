@@ -45,10 +45,12 @@ test('removing a required phrase is reported', () => {
   assert.ok(errs.some((e) => e.includes('12年目')), errs.join('\n'));
 });
 
-test('a photo without alt text is rejected', () => {
+test('a photo with empty alt text is allowed, one without an alt attribute is rejected', () => {
   const m = readModels(html);
   m.photos.about.alt = '';
-  assert.ok(validateDocument(applyModels(html, m), rules).some((e) => e.includes('説明文')));
+  assert.deepEqual(validateDocument(applyModels(html, m), rules), []);
+  const bare = applyModels(html, m).replace(/(<img[ 	][^>]*?) alt=""/, '$1');
+  assert.ok(validateDocument(bare, rules).some((e) => e.includes('alt')));
 });
 
 test('a price card with no price is rejected', () => {

@@ -233,14 +233,13 @@ function photoFields(key, p) {
   return [
     shown ? h('img', { class: 'thumb', src: shown, alt: '' }) : h('p', { class: 'small' }, 'まだ写真が選ばれていません。'),
     field(p.src ? '写真を差し替える' : '写真を選ぶ', file),
-    field('説明文', input(p.alt, (v) => { p.alt = v; changed(); })),
     msg,
   ];
 }
 
 function photoPanel() {
   return h('div', {},
-    h('p', { class: 'small' }, '写真を選ぶと自動で縮小されます。説明文は、目の見えない方や写真が表示されないときに読み上げられます。'),
+    h('p', { class: 'small' }, '写真を選ぶと自動で縮小されます。'),
     ...Object.entries(PHOTOS).map(([k, label]) => h('div', { class: 'card' }, h('h2', {}, label), ...photoFields(k, models.photos[k]))),
     ...models.groups.filter((g) => g.photo).map((g) => h('div', { class: 'card' },
       h('h2', {}, `メニュー:${g.title.trim() || '(名前なし)'}`), ...photoFields(groupPhotoKey(g), g.photo))),

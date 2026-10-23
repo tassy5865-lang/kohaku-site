@@ -5,7 +5,7 @@ import { parseGroups, renderGroups, newGroup, validateGroups, MAX_GROUPS } from 
 import { readModels, applyModels, summarizeChanges, rebaseModels, managedImages } from '../js/site-model.js';
 import { validateDocument } from '../js/validate.js';
 
-const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('./fixtures/index.menu4.html', import.meta.url), 'utf8');
 const rules = JSON.parse(readFileSync(new URL('../../tools/rules.json', import.meta.url), 'utf8'));
 const grp = (m, id) => m.groups.find((g) => g.id === id);
 const ids = (m) => m.groups.map((g) => g.id);
