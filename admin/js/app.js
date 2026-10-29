@@ -249,7 +249,8 @@ function photoPanel() {
 }
 
 function otherTextPanel() {
-  const groups = [...new Set(TEXT_SLOTS.map((t) => t.group))];
+  const slots = TEXT_SLOTS.filter((t) => t.key in models.texts);
+  const groups = [...new Set(slots.map((t) => t.group))];
   return h('div', {},
     h('p', { class: 'small' }, '見出し・ボタンの文字・ご来店の流れ・注意書き・アクセスなど、ほかのタブにない文字をここで直せます。改行したいところは、枠の中で改行してください。'),
     h('details', { class: 'card' },
@@ -260,7 +261,7 @@ function otherTextPanel() {
         : input(models.meta[f.key], (x) => { models.meta[f.key] = x; changed(); }), f.hint))),
     ...groups.map((g) => h('details', { class: 'card' },
       h('summary', {}, h('strong', {}, g)),
-      ...TEXT_SLOTS.filter((t) => t.group === g).map((t) => {
+      ...slots.filter((t) => t.group === g).map((t) => {
         const v = models.texts[t.key];
         const multi = v.includes('\n') || v.length > 40;
         return field(t.label, multi

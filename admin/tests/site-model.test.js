@@ -129,3 +129,10 @@ test('meta: title and descriptions are read, escaped on write, and touch nothing
   assert.ok(summarizeChanges(m, b).some((x) => x.includes('タイトル')));
   assert.equal(norm(applyModels(live, readModels(live))), norm(live));
 });
+
+test('texts: a slot whose marker is missing from the page is skipped, not fatal', () => {
+  const page = live.replace('<!--edit:t-hero-tag-->', '').replace('<!--/edit:t-hero-tag-->', '');
+  const m = readModels(page);
+  assert.ok(!('hero-tag' in m.texts));
+  assert.equal(norm(applyModels(page, m)), norm(page));
+});

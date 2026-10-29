@@ -28,7 +28,8 @@ export function readModels(html) {
   const photos = {};
   for (const k of Object.keys(PHOTOS)) photos[k] = getPhoto(html, k);
   const texts = {};
-  for (const t of TEXT_SLOTS) texts[t.key] = fromInline(getRegion(html, `t-${t.key}`));
+  // ブラウザに古い text-slots.js が残っていても止まらないよう、ページに目印がない項目は飛ばす
+  for (const t of TEXT_SLOTS) if (html.includes(`<!--edit:t-${t.key}-->`)) texts[t.key] = fromInline(getRegion(html, `t-${t.key}`));
   return {
     notice: parseNotice(getRegion(html, 'notice')),
     about: parseBlocks(getRegion(html, 'about')),
@@ -55,7 +56,7 @@ export function applyModels(html, m, { preview = false } = {}) {
   out = setRegion(out, 'price-card', renderCard(m.card, { indent: '          ', closeIndent: '        ' }));
   out = setRegion(out, 'menu-groups', renderGroups(m.groups, { indent: '        ', closeIndent: '        ', preview }));
   // 前後の改行だけ取り除く(「では…」のように行頭の空白が意味を持つ文字があるため、空白は残す)
-  for (const t of TEXT_SLOTS) out = setRegion(out, `t-${t.key}`, toInline(m.texts[t.key].replace(/^\n+|\n+$/g, '')));
+  for (const t of TEXT_SLOTS) if (t.key in m.texts) out = setRegion(out, `t-${t.key}`, toInline(m.texts[t.key].replace(/^\n+|\n+$/g, '')));
   out = applyMeta(out, m.meta);
   for (const k of Object.keys(PHOTOS)) {
     const p = m.photos[k];
