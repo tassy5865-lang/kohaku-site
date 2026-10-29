@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readModels, applyModels, summarizeChanges, rebaseModels } from '../js/site-model.js';
+import { applyMeta } from '../js/meta.js';
 
 const grp = (m, id) => m.groups.find((g) => g.id === id);
 const live = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
@@ -111,4 +112,20 @@ test('texts: the live page has a marker for every slot and lossless round trip',
   const m = readModels(live);
   assert.ok(Object.keys(m.texts).length >= 80);
   assert.equal(norm(applyModels(live, m)), norm(live));
+});
+
+test('meta: title and descriptions are read, escaped on write, and touch nothing else', () => {
+  const m = readModels(html);
+  assert.match(m.meta.title, /^琥珀\(こはく\)\|/);
+  assert.ok(m.meta.title.includes('アロマ&よもぎ蒸し'));
+  const b = structuredClone(m);
+  b.meta.title = '新しい "題" & <b>';
+  b.meta.description = '説明\n文';
+  const out = applyMeta(html, b.meta);
+  assert.match(out, /<title>新しい "題" &amp; &lt;b&gt;<\/title>/);
+  assert.match(out, /<meta name="description" content="説明 文">/);
+  assert.equal(readModels(out).meta.title, '新しい "題" & <b>');
+  assert.equal(out.replace(/<title>.*<\/title>/, '').replace(/<meta name="description"[^>]*>/, ''), html.replace(/<title>.*<\/title>/, '').replace(/<meta name="description"[^>]*>/, ''));
+  assert.ok(summarizeChanges(m, b).some((x) => x.includes('タイトル')));
+  assert.equal(norm(applyModels(live, readModels(live))), norm(live));
 });

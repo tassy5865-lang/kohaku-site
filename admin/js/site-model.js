@@ -5,6 +5,7 @@ import { parseFaq, renderFaq } from './faq.js';
 import { parseCard, renderCard, parseGroups, renderGroups } from './price.js';
 import { toInline, fromInline } from './text.js';
 import { TEXT_SLOTS } from './text-slots.js';
+import { META_FIELDS, readMeta, applyMeta } from './meta.js';
 
 export const PHOTOS = {
   'hero-l': 'トップ(左)',
@@ -38,6 +39,7 @@ export function readModels(html) {
     card: parseCard(getRegion(html, 'price-card')),
     groups: parseGroups(getRegion(html, 'menu-groups')),
     texts,
+    meta: readMeta(html),
     photos,
   };
 }
@@ -54,6 +56,7 @@ export function applyModels(html, m, { preview = false } = {}) {
   out = setRegion(out, 'menu-groups', renderGroups(m.groups, { indent: '        ', closeIndent: '        ', preview }));
   // 前後の改行だけ取り除く(「では…」のように行頭の空白が意味を持つ文字があるため、空白は残す)
   for (const t of TEXT_SLOTS) out = setRegion(out, `t-${t.key}`, toInline(m.texts[t.key].replace(/^\n+|\n+$/g, '')));
+  out = applyMeta(out, m.meta);
   for (const k of Object.keys(PHOTOS)) {
     const p = m.photos[k];
     out = setPhoto(out, k, { ...p, src: preview && p.previewSrc ? p.previewSrc : p.src });
@@ -155,6 +158,7 @@ export function summarizeChanges(before, after) {
   const groups = new Set();
   for (const t of TEXT_SLOTS) if (before.texts[t.key] !== after.texts[t.key]) groups.add(t.group);
   for (const g of groups) out.push(`文字: ${g}`);
+  for (const f of META_FIELDS) if (before.meta[f.key] !== after.meta[f.key]) out.push(`検索・共有の表示: ${f.label}`);
   for (const [k, label] of Object.entries(PHOTOS)) {
     const a = before.photos[k];
     const b = after.photos[k];

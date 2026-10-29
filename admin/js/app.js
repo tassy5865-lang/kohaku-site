@@ -8,6 +8,7 @@ import { formatYen, newGroup, validateGroups, isLinkUrl, MAX_GROUPS } from './pr
 import { toJpeg, bytesToDataUrl } from './images.js';
 import { makePreview } from './preview.js';
 import { TEXT_SLOTS } from './text-slots.js';
+import { META_FIELDS } from './meta.js';
 
 // 他のサイトの枠に埋め込まれていたら何も表示しない(クリックジャッキング対策)
 if (window.top !== window.self) document.documentElement.classList.add('framed');
@@ -251,6 +252,12 @@ function otherTextPanel() {
   const groups = [...new Set(TEXT_SLOTS.map((t) => t.group))];
   return h('div', {},
     h('p', { class: 'small' }, '見出し・ボタンの文字・ご来店の流れ・注意書き・アクセスなど、ほかのタブにない文字をここで直せます。改行したいところは、枠の中で改行してください。'),
+    h('details', { class: 'card' },
+      h('summary', {}, h('strong', {}, '検索結果・共有に出る文字(タイトル・説明文)')),
+      h('p', { class: 'small' }, 'ページの画面には出ませんが、Googleなどの検索結果や、LINE・Instagramで共有したときに表示されます。変えても反映まで時間がかかることがあります。'),
+      ...META_FIELDS.map((f) => field(f.label, f.multi
+        ? textarea(models.meta[f.key], (x) => { models.meta[f.key] = x; changed(); }, 3)
+        : input(models.meta[f.key], (x) => { models.meta[f.key] = x; changed(); }), f.hint))),
     ...groups.map((g) => h('details', { class: 'card' },
       h('summary', {}, h('strong', {}, g)),
       ...TEXT_SLOTS.filter((t) => t.group === g).map((t) => {
@@ -278,7 +285,7 @@ function render() {
 // ---------- 公開 ----------
 function buildFinal() {
   const html = applyModels(site.html, models);
-  return { html, errors: [...validateGroups(models.groups), ...validateDocument(html, rules)] };
+  return { html, errors: [...META_FIELDS.filter((f) => !models.meta[f.key].trim()).map((f) => `空にできません: ${f.label}`), ...validateGroups(models.groups), ...validateDocument(html, rules)] };
 }
 
 function openConfirm() {
