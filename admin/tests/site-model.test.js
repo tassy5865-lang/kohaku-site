@@ -4,12 +4,16 @@ import { readFileSync } from 'node:fs';
 import { readModels, applyModels, summarizeChanges, rebaseModels } from '../js/site-model.js';
 
 const grp = (m, id) => m.groups.find((g) => g.id === id);
-const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const live = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+// 店主が管理画面で編集するので、中身を決め打ちするテストは固定のスナップショット(2026-10-23時点)で行う
+const html = readFileSync(new URL('./fixtures/index.snapshot.html', import.meta.url), 'utf8');
 const norm = (s) => s.replace(/\r\n/g, '\n').replace(/>\s+</g, '><').trim();
 
 test('read → apply is lossless on the real index.html (modulo whitespace between tags)', () => {
-  const m = readModels(html);
-  assert.equal(norm(applyModels(html, m)), norm(html));
+  for (const page of [html, live]) {
+    const m = readModels(page);
+    assert.equal(norm(applyModels(page, m)), norm(page));
+  }
 });
 
 test('real page is parsed into the expected shape', () => {
