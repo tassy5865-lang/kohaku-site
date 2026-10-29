@@ -11,4 +11,6 @@ test('preview has no scripts, no intro overlay, and a base href', () => {
   assert.ok(!p.includes('class="intro"'));
   assert.match(p, /<head>\s*<base href="\.\.\/">/);
   assert.ok(p.includes('<h1>'));
+  assert.ok(html.includes('http-equiv="Content-Security-Policy"'), 'the page itself carries a CSP');
+  assert.ok(!/Content-Security-Policy/.test(p), 'the preview drops it (its sandbox has no origin for self)');
 });

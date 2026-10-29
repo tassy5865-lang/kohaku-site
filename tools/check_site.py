@@ -154,6 +154,17 @@ def main():
         elif href and not (ROOT / href).exists():
             errors.append(f"ファイルがありません: {href}")
 
+    # CSP(ページに埋め込んだ読み込み許可の宣言)。消えたり、外部スクリプトの許可が広がったりしていないか
+    csp = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]*)"', raw)
+    if not csp:
+        errors.append("CSP(Content-Security-Policy の meta)がありません")
+    else:
+        for needed in ("object-src 'none'", "base-uri 'self'"):
+            if needed not in csp.group(1):
+                errors.append(f"CSP に {needed} がありません")
+        script_src = re.search(r"script-src ([^;]*)", csp.group(1))
+        if not script_src or "'unsafe-eval'" in script_src.group(1) or "*" in script_src.group(1).replace("*.", ""):
+            errors.append("CSP の script-src が広すぎます(unsafe-eval・ワイルドカードは不可)")
     if not scan.jsonld:
         errors.append("JSON-LD がありません")
     for block in scan.jsonld:

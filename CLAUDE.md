@@ -33,3 +33,4 @@
 - 見出し・ボタン・ご来店の流れ・注意書き・アクセス・フッターなどの小さな文字は `<!--edit:t-KEY-->…<!--/edit:t-KEY-->`(中身は文字と <br> のみ)で囲み、管理画面の「見出し・その他の文字」タブで直す。一覧は `admin/js/text-slots.js`。**文字を足すときは、index.html に目印を付け、text-slots.js にも1行足す**(片方だけだとエラー)。JSON-LD・リンク先アドレスは対象外。タイトルと説明文(`<title>`・description・og:title・og:description)は属性内にコメントを置けないため、`admin/js/meta.js` の正規表現で読み書きする(同タブの先頭。ページ側の形を変えたら meta.js も直す)
 - 検査ルールは `tools/rules.json`(`check_site.py` と管理画面の公開前検査が共有)。必須語・禁止語を変えるときはここだけ直す
 - テスト: `npm test`(依存パッケージなし、Node 20+)。CI(GitHub Actions)は `workflow` 権限が無く未設置
+- セキュリティ(2026-10-29): `index.html` の `<head>` に CSP の meta(GA4 のみ外部許可)と referrer を入れてある。`check_site.py` が CSP の有無と script-src の広がりを検査する。外部サービスを足すときは CSP の許可先も足す。管理画面のプレビューは sandbox で `self` が合わないため、`preview.js` が CSP を外して表示する
