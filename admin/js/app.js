@@ -255,11 +255,9 @@ function otherTextPanel() {
       h('summary', {}, h('strong', {}, g)),
       ...TEXT_SLOTS.filter((t) => t.group === g).map((t) => {
         const v = models.texts[t.key];
-        const multi = v.includes('
-') || v.length > 40;
+        const multi = v.includes('\n') || v.length > 40;
         return field(t.label, multi
-          ? textarea(v, (x) => { models.texts[t.key] = x; changed(); }, Math.min(8, Math.max(2, v.split('
-').length + 1)))
+          ? textarea(v, (x) => { models.texts[t.key] = x; changed(); }, Math.min(8, Math.max(2, v.split('\n').length + 1)))
           : input(v, (x) => { models.texts[t.key] = x; changed(); }));
       }))));
 }
