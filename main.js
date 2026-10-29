@@ -99,9 +99,8 @@
     root.classList.remove("has-intro");
   }
 
-  // アクセス解析: 予約・LINE・Instagram・地図ボタンのクリックをGA4のイベントとして送る
+  // アクセス解析: LINE・Instagram・地図ボタンのクリックをGA4のイベントとして送る
   var tracked = [
-    { test: /^https:\/\/tol-app\.jp\//, name: "click_reserve" },
     { test: /^https:\/\/line\.me\//, name: "click_line" },
     { test: /^https:\/\/(ig\.me|www\.instagram\.com)\//, name: "click_instagram" },
     { test: /^https:\/\/www\.google\.com\/maps\//, name: "click_map" }

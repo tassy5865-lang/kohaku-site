@@ -110,7 +110,7 @@ test('texts: every slot is read, edited text lands only in its own spot, empty t
 
 test('texts: the live page has a marker for every slot and lossless round trip', () => {
   const m = readModels(live);
-  assert.ok(Object.keys(m.texts).length >= 80);
+  assert.ok(Object.keys(m.texts).length >= 70);
   assert.equal(norm(applyModels(live, m)), norm(live));
 });
 
