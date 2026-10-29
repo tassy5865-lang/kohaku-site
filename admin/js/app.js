@@ -7,6 +7,7 @@ import { listToText, textToList } from './list.js';
 import { formatYen, newGroup, validateGroups, isLinkUrl, MAX_GROUPS } from './price.js';
 import { toJpeg, bytesToDataUrl } from './images.js';
 import { makePreview } from './preview.js';
+import { TEXT_SLOTS } from './text-slots.js';
 
 // 他のサイトの枠に埋め込まれていたら何も表示しない(クリックジャッキング対策)
 if (window.top !== window.self) document.documentElement.classList.add('framed');
@@ -246,6 +247,23 @@ function photoPanel() {
   );
 }
 
+function otherTextPanel() {
+  const groups = [...new Set(TEXT_SLOTS.map((t) => t.group))];
+  return h('div', {},
+    h('p', { class: 'small' }, '見出し・ボタンの文字・ご来店の流れ・注意書き・アクセスなど、ほかのタブにない文字をここで直せます。改行したいところは、枠の中で改行してください。'),
+    ...groups.map((g) => h('details', { class: 'card' },
+      h('summary', {}, h('strong', {}, g)),
+      ...TEXT_SLOTS.filter((t) => t.group === g).map((t) => {
+        const v = models.texts[t.key];
+        const multi = v.includes('
+') || v.length > 40;
+        return field(t.label, multi
+          ? textarea(v, (x) => { models.texts[t.key] = x; changed(); }, Math.min(8, Math.max(2, v.split('
+').length + 1)))
+          : input(v, (x) => { models.texts[t.key] = x; changed(); }));
+      }))));
+}
+
 function noticePanel() {
   return h('div', {},
     h('h2', {}, 'お知らせ'),
@@ -254,7 +272,7 @@ function noticePanel() {
 }
 
 function render() {
-  const panel = { text: textPanel, price: pricePanel, photo: photoPanel, notice: noticePanel }[tab];
+  const panel = { text: textPanel, other: otherTextPanel, price: pricePanel, photo: photoPanel, notice: noticePanel }[tab];
   $('#panel').replaceChildren(panel());
   for (const b of document.querySelectorAll('.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
 }

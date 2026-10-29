@@ -4,6 +4,7 @@ import { parseList, renderList } from './list.js';
 import { parseFaq, renderFaq } from './faq.js';
 import { parseCard, renderCard, parseGroups, renderGroups } from './price.js';
 import { toInline, fromInline } from './text.js';
+import { TEXT_SLOTS } from './text-slots.js';
 
 export const PHOTOS = {
   'hero-l': 'トップ(左)',
@@ -25,6 +26,8 @@ function renderNotice(text) {
 export function readModels(html) {
   const photos = {};
   for (const k of Object.keys(PHOTOS)) photos[k] = getPhoto(html, k);
+  const texts = {};
+  for (const t of TEXT_SLOTS) texts[t.key] = fromInline(getRegion(html, `t-${t.key}`));
   return {
     notice: parseNotice(getRegion(html, 'notice')),
     about: parseBlocks(getRegion(html, 'about')),
@@ -34,6 +37,7 @@ export function readModels(html) {
     faq: parseFaq(getRegion(html, 'faq')),
     card: parseCard(getRegion(html, 'price-card')),
     groups: parseGroups(getRegion(html, 'menu-groups')),
+    texts,
     photos,
   };
 }
@@ -48,6 +52,8 @@ export function applyModels(html, m, { preview = false } = {}) {
   out = setRegion(out, 'faq', renderFaq(m.faq, { indent: '        ', closeIndent: '      ' }));
   out = setRegion(out, 'price-card', renderCard(m.card, { indent: '          ', closeIndent: '        ' }));
   out = setRegion(out, 'menu-groups', renderGroups(m.groups, { indent: '        ', closeIndent: '        ', preview }));
+  // 前後の改行だけ取り除く(「では…」のように行頭の空白が意味を持つ文字があるため、空白は残す)
+  for (const t of TEXT_SLOTS) out = setRegion(out, `t-${t.key}`, toInline(m.texts[t.key].replace(/^\n+|\n+$/g, '')));
   for (const k of Object.keys(PHOTOS)) {
     const p = m.photos[k];
     out = setPhoto(out, k, { ...p, src: preview && p.previewSrc ? p.previewSrc : p.src });
@@ -73,7 +79,7 @@ export function rebaseModels(base, mine, latest) {
     else { set(clash, m); clashed = true; }       // 両方が違う内容に変更
   };
   for (const k of Object.keys(latest)) {
-    if (k === 'photos') {
+    if (k === 'photos' || k === 'texts') {
       for (const s of Object.keys(latest[k])) pick((o) => o[k][s], (o, v) => { o[k][s] = v; });
     } else if (k === 'groups') {
       if (rebaseGroups(base.groups, mine.groups, latest.groups, out, clash)) clashed = true;
@@ -146,6 +152,9 @@ export function summarizeChanges(before, after) {
   if (!same(before.faq, after.faq)) out.push('よくある質問');
   if (!same(before.card, after.card)) out.push('初回限定メニュー');
   out.push(...summarizeGroups(before.groups, after.groups));
+  const groups = new Set();
+  for (const t of TEXT_SLOTS) if (before.texts[t.key] !== after.texts[t.key]) groups.add(t.group);
+  for (const g of groups) out.push(`文字: ${g}`);
   for (const [k, label] of Object.entries(PHOTOS)) {
     const a = before.photos[k];
     const b = after.photos[k];

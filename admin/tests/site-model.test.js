@@ -92,3 +92,23 @@ test('rebaseModels: no clash reports nothing', () => {
   assert.deepEqual(r.clashed, []);
   assert.deepEqual(r.models, base);
 });
+
+test('texts: every slot is read, edited text lands only in its own spot, empty text is allowed', () => {
+  const m = readModels(html);
+  assert.equal(m.texts['hero-tag'], '脳の休息と巡りを変えるサロン');
+  assert.equal(m.texts['hero-copy-1'], '心と身体をほどく、');
+  const b = structuredClone(m);
+  b.texts['hero-tag'] = '新しい\n<b>サブ</b>';
+  const out = applyModels(html, b);
+  assert.match(out, /<p class="hero__tag"><!--edit:t-hero-tag-->新しい<br>&lt;b&gt;サブ&lt;\/b&gt;<!--\/edit:t-hero-tag--><\/p>/);
+  assert.equal(readModels(out).texts['hero-tag'], '新しい\n<b>サブ</b>');
+  assert.ok(summarizeChanges(m, b).includes('文字: トップ'));
+  // 見出し・ボタンなど他の文字は変わらない
+  assert.equal(readModels(out).texts['nav-about'], m.texts['nav-about']);
+});
+
+test('texts: the live page has a marker for every slot and lossless round trip', () => {
+  const m = readModels(live);
+  assert.ok(Object.keys(m.texts).length >= 80);
+  assert.equal(norm(applyModels(live, m)), norm(live));
+});

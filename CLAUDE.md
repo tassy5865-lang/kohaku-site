@@ -30,5 +30,6 @@
 - 料金の行には、任意で外部リンクを付けられる(`<span class="name"><a href="https://…" target="_blank" rel="noopener">名前</a></span>`)。`https://` のみ。`check_site.py` が `http://` を弾く
 - 保存は GitHub Git Data API で `index.html` と画像を 1 コミット。トークンは `admin/config.json` にパスワードで暗号化して置く(fine-grained PAT、このリポジトリの Contents のみ、有効90日)
 - トークンの作成・更新: 新しいトークンを作り、ご自身のターミナル(チャット・画面共有に出さない)で `node tools/gen-passphrase.mjs` のパスワードと `KOHAKU_TOKEN` `KOHAKU_PASS` を環境変数に入れて `node tools/make-config.mjs` → `admin/config.json` をコミット・push。表示される `…/admin/#k=…` のリンクを、パスワードとは**別の経路**で店主に渡す(鍵は「パスワード+リンクの秘密」から作る。暗号文は公開リポジトリにあるので、秘密がないと総当たりできない)。トークン更新でリンクを変えたくないときは `KOHAKU_KEY`(リンクの `k=` の値)を同じにして実行する。店主はリンクを1回開けばその端末に保存され、以後はパスワードだけで入れる。`config.json` が v1(秘密なし)の間は、この保護は効いていない。
+- 見出し・ボタン・ご来店の流れ・注意書き・アクセス・フッターなどの小さな文字は `<!--edit:t-KEY-->…<!--/edit:t-KEY-->`(中身は文字と <br> のみ)で囲み、管理画面の「見出し・その他の文字」タブで直す。一覧は `admin/js/text-slots.js`。**文字を足すときは、index.html に目印を付け、text-slots.js にも1行足す**(片方だけだとエラー)。タイトル・説明文(meta)・JSON-LD・リンク先アドレスは対象外
 - 検査ルールは `tools/rules.json`(`check_site.py` と管理画面の公開前検査が共有)。必須語・禁止語を変えるときはここだけ直す
 - テスト: `npm test`(依存パッケージなし、Node 20+)。CI(GitHub Actions)は `workflow` 権限が無く未設置
